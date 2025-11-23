@@ -1,24 +1,38 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'calculator_screen.dart';
-import 'time_comparison_screen.dart';
-import 'about_screen.dart';
+import 'solar_calculations.dart';
 
-void main() => runApp(const ShadowCastApp());
+void main() {
+  runApp(const ShadowCastApp());
+}
 
-class ShadowCastApp extends StatelessWidget {
-  const ShadowCastApp({super.key});
+class ShadowCastApp extends StatefulWidget {
+  const ShadowCastApp({Key? key}) : super(key: key);
+
+  @override
+  State<ShadowCastApp> createState() => _ShadowCastAppState();
+}
+
+class _ShadowCastAppState extends State<ShadowCastApp> {
+  Map<String, String>? lastResult;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: "ShadowCast",
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
-      routes: {
-        "/": (_) => const CalculatorScreen(),
-        "/compare": (_) => const TimeComparisonScreen(),
-        "/about": (_) => const AboutScreen(),
-      },
+      title: 'ShadowCast',
+      theme: ThemeData(
+        primarySwatch: Colors.purple,
+        useMaterial3: false,
+      ),
+      home: CalculatorScreen(
+        initialResult: lastResult,
+        onResultChanged: (res) {
+          setState(() {
+            lastResult = res;
+          });
+        },
+      ),
     );
   }
 }
