@@ -8,7 +8,7 @@ class ResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (result.containsKey('error')) {
+    if (result.containsKey('error')) { //error
       return Card(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         elevation: 6,
@@ -29,7 +29,7 @@ class ResultCard extends StatelessWidget {
       );
     }
 
-    return Card(
+    return Card( // success
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       elevation: 8,
       child: Padding(
@@ -37,7 +37,7 @@ class ResultCard extends StatelessWidget {
         child: Column(
           children: [
             Text(
-              'Shadow Results',
+              'Shadow Results', //title
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -48,7 +48,7 @@ class ResultCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             GridView(
-              shrinkWrap: true,
+              shrinkWrap: true, //results
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
@@ -69,7 +69,7 @@ class ResultCard extends StatelessWidget {
     );
   }
 
-  Widget _statBox(String title, String value, Color base) {
+  Widget _statBox(String title, String value, Color base) {//reusable widget used to display one piece of the shadow result
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: [base.withOpacity(0.15), base.withOpacity(0.08)]),

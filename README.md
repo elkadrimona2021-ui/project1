@@ -1,16 +1,27 @@
-# project1
+# ShadowCast 🌞
 
-A new Flutter project.
+**ShadowCast** is a Flutter application that calculates and visualizes the shadow cast by an object based on its height, date, time, and location.  
+Perfect for architects, designers, or anyone curious about shadows and sunlight angles.
 
-## Getting Started
+---
 
-This project is a starting point for a Flutter application.
+## Features
 
-A few resources to get you started if this is your first Flutter project:
+- Calculate shadow length based on:
+    - Object height
+    - Date & time
+    - Location (GPS or default coordinates)
+- Visualize shadows on a simple 2D compass layout
+- Compare shadow lengths at different times of the day
+- User-friendly, responsive, and modern Flutter UI
+- About section explaining the app's purpose
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+---
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Installation
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/elkadrimona2021-ui/project1.git
+cd project1

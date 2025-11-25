@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'calculator_screen.dart';
 import 'solar_calculations.dart';
-
+  
 void main() {
   runApp(const ShadowCastApp());
 }
@@ -21,8 +21,9 @@ class _ShadowCastAppState extends State<ShadowCastApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'ShadowCast',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.purple,
+        primarySwatch: Colors.deepOrange,
         useMaterial3: false,
       ),
       home: CalculatorScreen(

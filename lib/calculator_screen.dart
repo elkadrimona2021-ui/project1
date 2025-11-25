@@ -1,6 +1,7 @@
 // lib/calculator_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:geolocator/geolocator.dart';
 import 'solar_calculations.dart';
 import 'result_card.dart';
 import 'time_comparison_screen.dart';
@@ -20,8 +21,10 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   String heightStr = '2';
   DateTime date = DateTime.now();
   TimeOfDay time = TimeOfDay.fromDateTime(DateTime.now());
-  String latitudeStr = '25.2048';
-  String longitudeStr = '55.2708';
+  double latitude = 25.2048;
+  double longitude = 55.2708;
+  String locationStatus = 'Using default location';
+  bool isLoadingLocation = false;
   Map<String, String>? result;
   List<Map<String, String>> timeComparison = [];
 
@@ -29,6 +32,61 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   void initState() {
     super.initState();
     result = widget.initialResult;
+    _getCurrentLocation();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    setState(() {
+      isLoadingLocation = true;
+      locationStatus = 'Getting your location...';
+    });
+
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        setState(() {
+          locationStatus = 'Location services disabled';
+          isLoadingLocation = false;
+        });
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() {
+            locationStatus = 'Location permission denied';
+            isLoadingLocation = false;
+          });
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        setState(() {
+          locationStatus = 'Location permission permanently denied';
+          isLoadingLocation = false;
+        });
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      setState(() {
+        latitude = position.latitude;
+        longitude = position.longitude;
+        locationStatus = 'Using your current location';
+        isLoadingLocation = false;
+      });
+    } catch (e) {
+      setState(() {
+        locationStatus = 'Could not get location';
+        isLoadingLocation = false;
+      });
+    }
   }
 
   DateTime _combinedDateTime() {
@@ -37,11 +95,9 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
   void _calculateShadow() {
     final h = double.tryParse(heightStr) ?? 0.0;
-    final lat = double.tryParse(latitudeStr) ?? 0.0;
-    final lon = double.tryParse(longitudeStr) ?? 0.0;
     final dt = _combinedDateTime();
 
-    final res = calculateShadow(height: h, lat: lat, lon: lon, dt: dt);
+    final res = calculateShadow(height: h, lat: latitude, lon: longitude, dt: dt);
     setState(() {
       result = res;
     });
@@ -50,9 +106,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
 
   void generateComparisonAndNavigate() {
     final h = double.tryParse(heightStr) ?? 0.0;
-    final lat = double.tryParse(latitudeStr) ?? 0.0;
-    final lon = double.tryParse(longitudeStr) ?? 0.0;
-    final comp = generateTimeComparison(height: h, lat: lat, lon: lon, date: date);
+    final comp = generateTimeComparison(height: h, lat: latitude, lon: longitude, date: date);
     setState(() {
       timeComparison = comp;
     });
@@ -98,7 +152,15 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       body: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [Colors.blue.shade50, Colors.purple.shade50, Colors.pink.shade50]),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFFFF3E0), // Soft peach
+              Color(0xFFFFE0B2), // Light orange
+              Color(0xFFFFCC80), // Warm amber
+            ],
+          ),
         ),
         child: SafeArea(
           child: SingleChildScrollView(
@@ -115,22 +177,56 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                           width: 88,
                           height: 88,
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: [Colors.yellow.shade700, Colors.orange.shade600]),
+                            gradient: LinearGradient(
+                              colors: [Color(0xFFFF6F00), Color(0xFFFFB300)], // Deep orange to amber
+                            ),
                             shape: BoxShape.circle,
-                            boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+                            boxShadow: [
+                              BoxShadow(
+                                color: Color(0xFFFF6F00).withAlpha((0.4 * 255).round()),
+                                blurRadius: 20,
+                                spreadRadius: 4,
+                              )
+                            ],
                           ),
                           child: const Icon(Icons.wb_sunny, color: Colors.white, size: 40),
                         ),
                         const SizedBox(height: 12),
-                        Text('ShadowCast', style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, foreground: Paint()..shader = LinearGradient(colors: [Colors.purple.shade600, Colors.pink.shade600]).createShader(const Rect.fromLTWH(0,0,200,0)))),
+                        Text(
+                          'ShamsTrack',
+                          style: TextStyle(
+                            fontSize: 40,
+                            fontWeight: FontWeight.bold,
+                            foreground: Paint()
+                              ..shader = LinearGradient(
+                                colors: [Color(0xFFE65100), Color(0xFFFF6F00)],
+                              ).createShader(const Rect.fromLTWH(0, 0, 200, 0)),
+                          ),
+                        ),
                         const SizedBox(height: 6),
-                        Text('Calculate shadows with precision', style: TextStyle(color: Colors.grey[700])),
+                        Text(
+                          'Track the sun, predict the shadow',
+                          style: TextStyle(
+                            color: Color(0xFF5D4037),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 18),
                     Container(
-                      decoration: BoxDecoration(color: Colors.white.withAlpha((0.95 * 255).round())
-                          , borderRadius: BorderRadius.circular(24)),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha((0.95 * 255).round()),
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0xFFFF6F00).withAlpha((0.15 * 255).round()),
+                            blurRadius: 12,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
@@ -139,9 +235,9 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                             alignment: Alignment.centerLeft,
                             child: Row(
                               children: const [
-                                Icon(Icons.straighten, color: Colors.purple),
+                                Icon(Icons.straighten, color: Color(0xFFFF6F00)),
                                 SizedBox(width: 8),
-                                Text('Object Height (meters)', style: TextStyle(fontWeight: FontWeight.w600)),
+                                Text('Object Height (meters)', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF5D4037))),
                               ],
                             ),
                           ),
@@ -153,6 +249,10 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                             decoration: InputDecoration(
                               hintText: '2.0',
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Color(0xFFFF6F00), width: 2),
+                              ),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                             ),
                           ),
@@ -163,14 +263,22 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Row(children: const [Icon(Icons.calendar_today, color: Colors.blue), SizedBox(width:8), Text('Date', style: TextStyle(fontWeight: FontWeight.w600))]),
+                                    Row(children: const [
+                                      Icon(Icons.calendar_today, color: Color(0xFFFF8F00)),
+                                      SizedBox(width: 8),
+                                      Text('Date', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF5D4037)))
+                                    ]),
                                     const SizedBox(height: 8),
                                     InkWell(
                                       onTap: _pickDate,
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                                        decoration: BoxDecoration(border: Border.all(color: Colors.blue.shade100), borderRadius: BorderRadius.circular(12)),
-                                        child: Text(dateStr),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(color: Color(0xFFFFCC80)),
+                                          borderRadius: BorderRadius.circular(12),
+                                          color: Color(0xFFFFF8E1),
+                                        ),
+                                        child: Text(dateStr, style: TextStyle(color: Color(0xFF5D4037))),
                                       ),
                                     )
                                   ],
@@ -181,14 +289,22 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Row(children: const [Icon(Icons.access_time, color: Colors.pink), SizedBox(width:8), Text('Time', style: TextStyle(fontWeight: FontWeight.w600))]),
+                                    Row(children: const [
+                                      Icon(Icons.access_time, color: Color(0xFFFF8F00)),
+                                      SizedBox(width: 8),
+                                      Text('Time', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF5D4037)))
+                                    ]),
                                     const SizedBox(height: 8),
                                     InkWell(
                                       onTap: _pickTime,
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                                        decoration: BoxDecoration(border: Border.all(color: Colors.pink.shade100), borderRadius: BorderRadius.circular(12)),
-                                        child: Text(timeStr),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(color: Color(0xFFFFCC80)),
+                                          borderRadius: BorderRadius.circular(12),
+                                          color: Color(0xFFFFF8E1),
+                                        ),
+                                        child: Text(timeStr, style: TextStyle(color: Color(0xFF5D4037))),
                                       ),
                                     )
                                   ],
@@ -197,45 +313,42 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          Align(
-                            alignment: Alignment.centerLeft,
+                          // Location status indicator
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Color(0xFFFFF3E0), Color(0xFFFFE0B2)],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Color(0xFFFFB74D), width: 1.5),
+                            ),
                             child: Row(
-                              children: const [
-                                Icon(Icons.place, color: Colors.green),
-                                SizedBox(width: 8),
-                                Text('Location', style: TextStyle(fontWeight: FontWeight.w600)),
+                              children: [
+                                Icon(
+                                  isLoadingLocation ? Icons.location_searching : Icons.location_on,
+                                  color: Color(0xFFE65100),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    locationStatus,
+                                    style: TextStyle(
+                                      color: Color(0xFF5D4037),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                if (!isLoadingLocation)
+                                  IconButton(
+                                    icon: Icon(Icons.refresh, size: 20, color: Color(0xFFE65100)),
+                                    onPressed: _getCurrentLocation,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                  ),
                               ],
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  initialValue: latitudeStr,
-                                  keyboardType: TextInputType.numberWithOptions(decimal: true, signed: true),
-                                  decoration: InputDecoration(
-                                    hintText: 'Latitude',
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                                  ),
-                                  onChanged: (v) => setState(() => latitudeStr = v),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: TextFormField(
-                                  initialValue: longitudeStr,
-                                  keyboardType: TextInputType.numberWithOptions(decimal: true, signed: true),
-                                  decoration: InputDecoration(
-                                    hintText: 'Longitude',
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                                  ),
-                                  onChanged: (v) => setState(() => longitudeStr = v),
-                                ),
-                              ),
-                            ],
                           ),
                           const SizedBox(height: 14),
                           ElevatedButton(
@@ -244,8 +357,12 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                               minimumSize: const Size.fromHeight(48),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                               padding: const EdgeInsets.symmetric(vertical: 12),
+                              backgroundColor: Color(0xFFFF6F00),
+                              foregroundColor: Colors.white,
+                              elevation: 4,
+                              shadowColor: Color(0xFFFF6F00).withAlpha((0.4 * 255).round()),
                             ),
-                            child: const Text('Calculate Shadow', style: TextStyle(fontWeight: FontWeight.bold)),
+                            child: const Text('Calculate Shadow', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                           ),
                         ],
                       ),
@@ -269,9 +386,15 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              side: BorderSide(color: Color(0xFFFF8F00), width: 2),
+                              foregroundColor: Color(0xFFE65100),
                             ),
                             child: Column(
-                              children: const [Icon(Icons.access_time), SizedBox(height: 4), Text('Compare', style: TextStyle(fontSize: 12))],
+                              children: const [
+                                Icon(Icons.access_time, color: Color(0xFFFF6F00)),
+                                SizedBox(height: 4),
+                                Text('Compare', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))
+                              ],
                             ),
                           ),
                         ),
@@ -279,25 +402,48 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                         Expanded(
                           child: OutlinedButton(
                             onPressed: () {
-                              // Visual screen - if result exists, open a simple visualization modal
                               if (result == null || result!.containsKey('error')) {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Calculate a shadow first to see visualization')));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: const Text('Calculate a shadow first to see visualization'),
+                                    backgroundColor: Color(0xFFE65100),
+                                  ),
+                                );
                                 return;
                               }
                               showDialog(
                                 context: context,
                                 builder: (_) => Dialog(
+                                  backgroundColor: Colors.transparent,
                                   child: Container(
-                                    padding: const EdgeInsets.all(12),
+                                    padding: const EdgeInsets.all(16),
                                     width: 400,
-                                    height: 480,
+                                    height: 520,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [Color(0xFFFFF8E1), Color(0xFFFFE0B2)],
+                                      ),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
                                     child: Column(
                                       children: [
                                         Row(
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
-                                            IconButton(onPressed: () => Navigator.of(context).pop(), icon: const Icon(Icons.close)),
-                                            const Text('Shadow Visualization', style: TextStyle(fontWeight: FontWeight.bold)),
+                                            IconButton(
+                                              onPressed: () => Navigator.of(context).pop(),
+                                              icon: const Icon(Icons.close, color: Color(0xFF5D4037)),
+                                            ),
+                                            const Text(
+                                              'Shadow Visualization',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 18,
+                                                color: Color(0xFF5D4037),
+                                              ),
+                                            ),
                                             const SizedBox(width: 40),
                                           ],
                                         ),
@@ -306,48 +452,229 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                                           child: LayoutBuilder(builder: (context, constraints) {
                                             final az = double.tryParse(result?['azimuth'] ?? '0') ?? 0.0;
                                             final sl = double.tryParse(result?['shadowLength'] ?? '0') ?? 0.0;
-                                            final scaled = (sl * 30).clamp(0.0, 140.0);
-                                            // Using CustomPaint would be ideal but use simple stack:
+                                            final scaled = (sl * 30).clamp(20.0, 140.0);
+                                            final angleInRadians = (az - 90) * 3.1415926535 / 180.0;
+                                            final centerX = 180.0;
+                                            final centerY = 180.0;
+
                                             return Center(
                                               child: Container(
                                                 width: 360,
                                                 height: 360,
-                                                decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: Colors.white),
+                                                decoration: BoxDecoration(
+                                                  borderRadius: BorderRadius.circular(16),
+                                                  color: Colors.white,
+                                                  border: Border.all(color: Color(0xFFFFB74D), width: 3),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Color(0xFFFF6F00).withAlpha((0.2 * 255).round()),
+                                                      blurRadius: 12,
+                                                      offset: Offset(0, 4),
+                                                    ),
+                                                  ],
+                                                ),
                                                 child: Stack(
                                                   children: [
-                                                    // Compass labels
-                                                    Positioned(top: 8, left: 0, right: 0, child: Center(child: Text('N', style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.bold)))),
-                                                    Positioned(bottom: 8, left: 0, right: 0, child: Center(child: Text('S', style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.bold)))),
-                                                    Positioned(left: 8, top: constraints.maxHeight/2 - 10, child: Text('W', style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.bold))),
-                                                    Positioned(right: 8, top: constraints.maxHeight/2 - 10, child: Text('E', style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.bold))),
-                                                    // Object
-                                                    Positioned(
-                                                      left: 160,
-                                                      top: 140,
-                                                      child: Column(
-                                                        children: [
-                                                          Container(width: 40, height: 10, decoration: BoxDecoration(color: Colors.yellow[600], shape: BoxShape.circle)),
-                                                          const SizedBox(height: 6),
-                                                          Container(width: 30, height: 60, decoration: BoxDecoration(color: Colors.purple, borderRadius: BorderRadius.circular(4))),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                    // Shadow line
-                                                    Positioned(
-                                                      left: 200,
-                                                      top: 200,
-                                                      child: Transform.rotate(
-                                                        angle: (az) * 3.1415926535 / 180.0,
-                                                        child: Container(
-                                                          width: scaled,
-                                                          height: 12,
-                                                          decoration: BoxDecoration(color:Colors.black.withAlpha((0.35 * 255).round())
-                                                              , borderRadius: BorderRadius.circular(8)),
+                                                    // Compass circle
+                                                    Center(
+                                                      child: Container(
+                                                        width: 300,
+                                                        height: 300,
+                                                        decoration: BoxDecoration(
+                                                          shape: BoxShape.circle,
+                                                          border: Border.all(color: Color(0xFFFFCC80), width: 2),
                                                         ),
                                                       ),
                                                     ),
-                                                    // Shadow label
-                                                    Positioned(bottom: 12, left: 0, right: 0, child: Center(child: Text('${result?['shadowLength']}m ${result?['direction']}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.purple)))),
+                                                    // Compass labels
+                                                    Positioned(
+                                                      top: 20,
+                                                      left: 0,
+                                                      right: 0,
+                                                      child: Center(
+                                                        child: Container(
+                                                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                                          decoration: BoxDecoration(
+                                                            color: Color(0xFFE65100),
+                                                            borderRadius: BorderRadius.circular(8),
+                                                          ),
+                                                          child: Text(
+                                                            'N (0°)',
+                                                            style: TextStyle(
+                                                              color: Colors.white,
+                                                              fontWeight: FontWeight.bold,
+                                                              fontSize: 14,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Positioned(
+                                                      bottom: 20,
+                                                      left: 0,
+                                                      right: 0,
+                                                      child: Center(
+                                                        child: Container(
+                                                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                                          decoration: BoxDecoration(
+                                                            color: Color(0xFFFF8F00),
+                                                            borderRadius: BorderRadius.circular(8),
+                                                          ),
+                                                          child: Text(
+                                                            'S (180°)',
+                                                            style: TextStyle(
+                                                              color: Colors.white,
+                                                              fontWeight: FontWeight.bold,
+                                                              fontSize: 14,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Positioned(
+                                                      left: 20,
+                                                      top: 0,
+                                                      bottom: 0,
+                                                      child: Center(
+                                                        child: Container(
+                                                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                                          decoration: BoxDecoration(
+                                                            color: Color(0xFFFF8F00),
+                                                            borderRadius: BorderRadius.circular(8),
+                                                          ),
+                                                          child: Text(
+                                                            'W\n(270°)',
+                                                            textAlign: TextAlign.center,
+                                                            style: TextStyle(
+                                                              color: Colors.white,
+                                                              fontWeight: FontWeight.bold,
+                                                              fontSize: 12,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Positioned(
+                                                      right: 20,
+                                                      top: 0,
+                                                      bottom: 0,
+                                                      child: Center(
+                                                        child: Container(
+                                                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                                          decoration: BoxDecoration(
+                                                            color: Color(0xFFFF8F00),
+                                                            borderRadius: BorderRadius.circular(8),
+                                                          ),
+                                                          child: Text(
+                                                            'E\n(90°)',
+                                                            textAlign: TextAlign.center,
+                                                            style: TextStyle(
+                                                              color: Colors.white,
+                                                              fontWeight: FontWeight.bold,
+                                                              fontSize: 12,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+
+                                                    // Shadow line from center
+                                                    Positioned(
+                                                      left: centerX,
+                                                      top: centerY,
+                                                      child: Transform.rotate(
+                                                        angle: angleInRadians,
+                                                        alignment: Alignment.centerLeft,
+                                                        child: Container(
+                                                          width: scaled,
+                                                          height: 10,
+                                                          decoration: BoxDecoration(
+                                                            gradient: LinearGradient(
+                                                              colors: [
+                                                                Color(0xFF424242).withAlpha((0.7 * 255).round()),
+                                                                Color(0xFF424242).withAlpha((0.2 * 255).round()),
+                                                              ],
+                                                            ),
+                                                            borderRadius: BorderRadius.circular(5),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+
+                                                    // Object at center
+                                                    Positioned(
+                                                      left: centerX - 15,
+                                                      top: centerY - 35,
+                                                      child: Column(
+                                                        children: [
+                                                          Container(
+                                                            width: 30,
+                                                            height: 30,
+                                                            decoration: BoxDecoration(
+                                                              gradient: LinearGradient(
+                                                                colors: [Color(0xFFFF6F00), Color(0xFFFFB300)],
+                                                              ),
+                                                              shape: BoxShape.circle,
+                                                              boxShadow: [
+                                                                BoxShadow(
+                                                                  color: Color(0xFFFF6F00).withAlpha((0.6 * 255).round()),
+                                                                  blurRadius: 12,
+                                                                  spreadRadius: 3,
+                                                                ),
+                                                              ],
+                                                            ),
+                                                            child: Icon(Icons.wb_sunny, color: Colors.white, size: 16),
+                                                          ),
+                                                          const SizedBox(height: 4),
+                                                          Container(
+                                                            width: 20,
+                                                            height: 40,
+                                                            decoration: BoxDecoration(
+                                                              color: Color(0xFF6D4C41),
+                                                              borderRadius: BorderRadius.circular(4),
+                                                              boxShadow: [
+                                                                BoxShadow(
+                                                                  color: Colors.black26,
+                                                                  blurRadius: 4,
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+
+                                                    // Shadow info
+                                                    Positioned(
+                                                      bottom: 8,
+                                                      left: 0,
+                                                      right: 0,
+                                                      child: Center(
+                                                        child: Container(
+                                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                                          decoration: BoxDecoration(
+                                                            gradient: LinearGradient(
+                                                              colors: [Color(0xFFE65100), Color(0xFFFF6F00)],
+                                                            ),
+                                                            borderRadius: BorderRadius.circular(12),
+                                                            boxShadow: [
+                                                              BoxShadow(
+                                                                color: Colors.black26,
+                                                                blurRadius: 6,
+                                                              ),
+                                                            ],
+                                                          ),
+                                                          child: Text(
+                                                            '${result?['shadowLength']}m ${result?['direction']}',
+                                                            style: const TextStyle(
+                                                              fontWeight: FontWeight.bold,
+                                                              color: Colors.white,
+                                                              fontSize: 15,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
                                                   ],
                                                 ),
                                               ),
@@ -356,7 +683,20 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                                         ),
                                         const SizedBox(height: 8),
                                         if (result != null)
-                                          Text('Sun Elevation: ${result?['elevation']}°  |  Azimuth: ${result?['azimuth']}°', style: const TextStyle(color: Colors.grey)),
+                                          Container(
+                                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              'Sun Elevation: ${result?['elevation']}°  |  Azimuth: ${result?['azimuth']}°',
+                                              style: const TextStyle(
+                                                color: Color(0xFF5D4037),
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
                                       ],
                                     ),
                                   ),
@@ -366,9 +706,15 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              side: BorderSide(color: Color(0xFFFF8F00), width: 2),
+                              foregroundColor: Color(0xFFE65100),
                             ),
                             child: Column(
-                              children: const [Icon(Icons.explore), SizedBox(height: 4), Text('Visualize', style: TextStyle(fontSize: 12))],
+                              children: const [
+                                Icon(Icons.explore, color: Color(0xFFFF6F00)),
+                                SizedBox(height: 4),
+                                Text('Visualize', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))
+                              ],
                             ),
                           ),
                         ),
@@ -379,9 +725,15 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              side: BorderSide(color: Color(0xFFFF8F00), width: 2),
+                              foregroundColor: Color(0xFFE65100),
                             ),
                             child: Column(
-                              children: const [Icon(Icons.info_outline), SizedBox(height: 4), Text('About', style: TextStyle(fontSize: 12))],
+                              children: const [
+                                Icon(Icons.info_outline, color: Color(0xFFFF6F00)),
+                                SizedBox(height: 4),
+                                Text('About', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))
+                              ],
                             ),
                           ),
                         ),
