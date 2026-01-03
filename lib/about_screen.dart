@@ -37,7 +37,7 @@ class AboutScreen extends StatelessWidget {
                   Icon(Icons.wb_sunny_outlined, size: 60, color: Colors.orange),
                   SizedBox(height: 8),
                   Text(
-                    'About ShadowCast',
+                    'About ShamsTrack',
                     style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.teal),
                   ),
                 ],
@@ -51,7 +51,7 @@ class AboutScreen extends StatelessWidget {
                     InfoCard(
                       title: 'How It Works',
                       content:
-                      'ShadowCast calculates shadow length and direction using solar position algorithms. '
+                      'ShamsTrack calculates shadow length and direction using solar position algorithms. '
                           'The app determines the sun\'s elevation and azimuth angles based on your location, date, and time, '
                           'then applies trigonometry to compute precise shadow measurements.',
                       icon: Icons.calculate_outlined,
@@ -82,7 +82,7 @@ class AboutScreen extends StatelessWidget {
                       child: Column(
                         children: const [
                           Text(
-                            'Created with ☀️ by ShadowCast Team',
+                            'Created with ☀️ by ShamsTrack Team',
                             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                           ),
                           SizedBox(height: 6),
